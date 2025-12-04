@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+.venv/
+venv/
+
+# Node
+node_modules/
+.next/
+.env.local
+.env
+
+# Java
+target/
+*.log
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

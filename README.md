@@ -1,0 +1,175 @@
+# 🏠 Property Insights Portal — Project 2
+
+A multi-application property analytics portal built as part of the technical exercise.  
+This project demonstrates a simple microservices architecture combining:
+
+- **Task 1 ML API** — Dockerized FastAPI regression model  
+- **Estimator API** — FastAPI backend that proxies to the Task 1 ML model  
+- **Analysis API** — Java Spring Boot backend for market analytics  
+- **Portal Frontend** — Next.js App Router frontend with two applications:
+  - Property **Value Estimator**
+  - Property **Market Analysis**
+
+---
+
+# 📁 Project Structure
+
+```
+project-2/
+├── estimator-api/        # FastAPI proxy backend → Task 1 ML API
+├── analysis-api/         # Spring Boot backend for analytics + what-if + export
+└── portal-frontend/      # Next.js App Router portal UI
+```
+
+---
+
+# 🚀 How the System Works
+
+## 1. Task 1 ML API (Dockerized FastAPI)
+- Runs on `localhost:8000`  
+- Loads the trained regression model + metadata  
+- Supports:
+  - `POST /predict` — single + batch predictions  
+- All predictions in Project 2 flow through this container.
+
+---
+
+## 2. Estimator API (FastAPI Proxy)
+- Endpoint:
+  - `POST /predict` → forwards request to `http://localhost:8000/predict`
+- Purpose:
+  - Decouple frontend from ML container port  
+  - Provide a clean backend-for-frontend
+
+Workflow:
+
+```
+UI → estimator-api → Task 1 ML API (Docker)
+```
+
+---
+
+## 3. Analysis API (Java Spring Boot)
+
+### Features
+- Initial dataset load into memory  
+- Market summary (avg / min / max / median / count)  
+- Cached with Spring `@Cacheable`  
+- Filter segments (price, bedrooms, school rating)  
+- What-if analysis → calls Task 1 ML API  
+- CSV export  
+- PDF stub export  
+- CORS enabled for Next.js
+
+### Endpoints
+```
+GET  /market/summary
+GET  /market/segments
+POST /market/what-if
+GET  /market/export?type=csv
+GET  /market/export?type=pdf
+```
+
+---
+
+## 4. Portal Frontend (Next.js App Router)
+
+### /estimator
+- Form for property features  
+- Calls estimator-api  
+- Shows predicted price  
+- Uses loading.tsx + error.tsx
+
+### /analysis
+- Server component loads summary + segments  
+- Client component handles filters, what-if, export  
+- Uses loading.tsx + error.tsx
+
+---
+
+# 🛠 How to Run
+
+## 1. Start Task 1 ML API (Docker)
+
+```
+docker build -t housing-price-api .
+docker run -p 8000:80 housing-price-api
+```
+
+---
+
+## 2. Start Estimator API
+
+```
+cd estimator-api
+uvicorn app.main:app --host 0.0.0.0 --port 9000
+```
+
+---
+
+## 3. Start Analysis API
+
+```
+cd analysis-api
+./mvnw spring-boot:run
+```
+
+---
+
+## 4. Start Portal Frontend
+
+```
+cd portal-frontend
+npm install
+npm run dev
+```
+
+---
+
+# 🧪 Quick Test Endpoints
+
+### Estimator
+```
+POST http://localhost:9000/predict
+```
+
+### Analysis
+```
+GET  http://localhost:8080/market/summary
+GET  http://localhost:8080/market/segments
+POST http://localhost:8080/market/what-if
+GET  http://localhost:8080/market/export?type=pdf
+```
+
+---
+
+# 🧩 Architecture Diagram
+
+```
+          ┌─────────────────┐
+          │  Next.js (UI)   │
+          └───────┬────────┘
+                  │
+   ┌──────────────┴──────────────┐
+   │                              │
+┌──▼───────────────┐     ┌────────▼─────────┐
+│ estimator-api     │     │ analysis-api     │
+│ FastAPI           │     │ Spring Boot      │
+└───┬───────────────┘     └───────┬─────────┘
+    │                             │
+    │ HTTP proxy                  │ What-if:
+    │                             │ calls ML container
+┌───▼───────────────┐     ┌───────▼──────────┐
+│ Task 1 ML API     │     │ housing.csv       │
+│ Docker (FastAPI)  │     │ loaded in memory  │
+└────────────────────┘     └──────────────────┘
+```
+
+---
+
+# 💡 Notes
+
+- All predictions in Project 2 flow through the Task 1 ML API  
+- Estimator API is a backend-for-frontend  
+- Analysis API demonstrates caching, data ingestion, what-if logic, PDF export  
+- Next.js uses server components for initial data load  
