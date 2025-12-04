@@ -1,6 +1,6 @@
 # 🏠 Property Insights Portal — Project 2
 
-A multi-application property analytics portal built as part of the technical exercise.  
+A multi-application property analytics portal.  
 This project demonstrates a simple microservices architecture combining:
 
 - **Task 1 ML API** — Dockerized FastAPI regression model  
