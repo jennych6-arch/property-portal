@@ -1,0 +1,127 @@
+package com.example.analysis_api.controller;
+
+import com.example.analysis_api.model.MarketSummary;
+import com.example.analysis_api.model.PropertyRecord;
+import com.example.analysis_api.model.WhatIfRequest;
+import com.example.analysis_api.model.WhatIfResponse;
+import com.example.analysis_api.service.MarketAnalysisService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
+
+import static org.hamcrest.Matchers.startsWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(MarketController.class)
+class MarketControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private MarketAnalysisService analysisService;
+
+    @Test
+    void health_returnsOkString() throws Exception {
+        mockMvc.perform(get("/market/health"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("ok"));
+    }
+
+    @Test
+    void summary_returnsMarketSummaryFromService() throws Exception {
+        MarketSummary summary =
+                new MarketSummary(100.0, 50.0, 150.0, 110.0, 10);
+        when(analysisService.getMarketSummary()).thenReturn(summary);
+
+        mockMvc.perform(get("/market/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.avgPrice").value(100.0))
+                .andExpect(jsonPath("$.minPrice").value(50.0))
+                .andExpect(jsonPath("$.maxPrice").value(150.0))
+                .andExpect(jsonPath("$.totalCount").value(10));
+    }
+
+    @Test
+    void segments_passesFiltersToServiceAndReturnsList() throws Exception {
+        List<PropertyRecord> records = List.of(
+                new PropertyRecord(300000, 1500, 3, 2, 2005, 4000, 5, 8)
+        );
+        when(analysisService.filterProperties(
+                any(), any(), any(), any(), any(), any()))
+                .thenReturn(records);
+
+        mockMvc.perform(get("/market/segments")
+                        .param("minPrice", "200000")
+                        .param("maxPrice", "400000")
+                        .param("minBedrooms", "3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].price").value(300000.0))
+                .andExpect(jsonPath("$[0].bedrooms").value(3));
+    }
+
+    @Test
+    void whatIf_returnsResponseFromService() throws Exception {
+        WhatIfRequest req = new WhatIfRequest();
+        req.setSquareFootage(1500);
+        req.setBedrooms(3);
+        req.setBathrooms(2);
+        req.setYearBuilt(2005);
+        req.setLotSize(4000);
+        req.setDistanceToCityCenter(5);
+        req.setSchoolRating(8);
+
+        WhatIfResponse response = new WhatIfResponse(250000.0, 200000.0);
+        when(analysisService.runWhatIf(any(WhatIfRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/market/what-if")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.predictedPrice").value(250000.0))
+                .andExpect(jsonPath("$.marketAverage").value(200000.0))
+                .andExpect(jsonPath("$.differenceFromAverage").value(50000.0));
+    }
+
+    @Test
+    void exportCsv_returnsCsvAndUsesServiceData() throws Exception {
+        List<PropertyRecord> records = List.of(
+                new PropertyRecord(300000, 1500, 3, 2, 2005, 4000, 5, 8)
+        );
+        when(analysisService.getAllProperties()).thenReturn(records);
+
+        mockMvc.perform(get("/market/export").param("type", "csv"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=market_data.csv"))
+                .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+                .andExpect(content().string(
+                        startsWith("price,squareFootage,bedrooms")));
+    }
+
+    @Test
+    void exportPdf_returnsPdfBytes() throws Exception {
+        mockMvc.perform(get("/market/export").param("type", "pdf"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=market_analysis.pdf"))
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+    }
+}
