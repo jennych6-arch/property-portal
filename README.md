@@ -15,7 +15,7 @@ This project demonstrates a simple microservices architecture combining:
 # 📁 Project Structure
 
 ```
-project-2/
+property-portal/
 ├── estimator-api/        # FastAPI proxy backend → Task 1 ML API
 ├── analysis-api/         # Spring Boot backend for analytics + what-if + export
 └── portal-frontend/      # Next.js App Router portal UI
@@ -40,6 +40,8 @@ project-2/
 - Purpose:
   - Decouple frontend from ML container port  
   - Provide a clean backend-for-frontend
+- Validates incoming data (server-side & client-side validation)
+- Displays proper error messages
 
 Workflow:
 
@@ -75,10 +77,15 @@ GET  /market/export?type=pdf
 ## 4. Portal Frontend (Next.js App Router)
 
 ### /estimator
+- Uses **React Server Components** for initial data(features) loading\
+- Uses **Client Components** for interactive UI\
+- Implements **form validation**, **history**, **comparison**,
+    **charts**\
+- Includes **custom hook** `useEstimatorHistory` for shared logic\
+- Loading and error boundaries included
 - Form for property features  
 - Calls estimator-api  
-- Shows predicted price  
-- Uses loading.tsx + error.tsx
+- Shows predicted price
 
 ### /analysis
 - Server component loads summary + segments  
@@ -173,3 +180,38 @@ GET  http://localhost:8080/market/export?type=pdf
 - Estimator API is a backend-for-frontend  
 - Analysis API demonstrates caching, data ingestion, what-if logic, PDF export  
 - Next.js uses server components for initial data load  
+
+---
+
+## Architecture Decisions
+
+### ✔ Backend Data Validation
+
+Estimator API now validates required fields, numeric bounds, and
+malformed input before calling ML container.
+
+### ✔ Client-Side Validation
+
+EstimatorClient validates each field before submitting: - Required\
+- Ranges\
+- Type correctness
+
+### ✔ Server + Client Component Separation
+
+-   `page.tsx` (server): fetches `/model-info` using RSC\
+-   `EstimatorClient.tsx` (client): handles UI, state, submission
+
+### ✔ React Server Components for Initial Data Loading
+
+`page.tsx` securely fetches model metadata:
+
+``` ts
+const res = await fetch("http://localhost:8000/model-info", { cache: "no-store" });
+```
+
+### ✔ Custom Hook for Shared Functionality
+
+`useEstimatorHistory.ts` encapsulates: - LocalStorage persistence\
+- Add/clear history\
+- Comparison selection\
+- ChartData computation

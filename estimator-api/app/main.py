@@ -61,12 +61,21 @@ def predict_single(request: PredictSingleRequest):
     - Validates the ML response and unwraps the first element:
         { "prediction": <float> }
     """
+    # data validation
+    if not request.features:
+        raise HTTPException(status_code=400, detail="Features cannot be empty.")
+
+    for name, value in request.features.items():
+        if value is None or not isinstance(value, (int, float)):
+            raise HTTPException(status_code=400, detail=f"Invalid value for {name}")
+        if not (0 < value < 1e7):  # example sanity range
+            raise HTTPException(status_code=400, detail=f"Unreasonable value for {name}: {value}")
 
     # Forward the request body to Task 1 ML API
     try:
         r = requests.post(
             f"{ML_API_BASE_URL}/predict",
-            json=request.model_dump(),
+            json=request.dict(),
             timeout=5,
         )
     except requests.RequestException as e:
@@ -81,7 +90,7 @@ def predict_single(request: PredictSingleRequest):
 
     # Validate and parse ML API response using PredictResponse schema
     try:
-        ml_resp = PredictResponse.model_validate(r.json())
+        ml_resp = PredictResponse.parse_obj(r.json())
     except Exception as e:
         raise HTTPException(
             status_code=500,
