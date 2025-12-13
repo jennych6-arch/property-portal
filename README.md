@@ -77,11 +77,11 @@ GET  /market/export?type=pdf
 ## 4. Portal Frontend (Next.js App Router)
 
 ### /estimator
-- Uses **React Server Components** for initial data(features) loading\
-- Uses **Client Components** for interactive UI\
+- Uses **React Server Components** for initial data(features) loading
+- Uses **Client Components** for interactive UI
 - Implements **form validation**, **history**, **comparison**,
-    **charts**\
-- Includes **custom hook** `useEstimatorHistory` for shared logic\
+    **charts**
+- Includes **custom hook** `useEstimatorHistory` for shared logic
 - Loading and error boundaries included
 - Form for property features  
 - Calls estimator-api  
@@ -192,13 +192,14 @@ malformed input before calling ML container.
 
 ### ✔ Client-Side Validation
 
-EstimatorClient validates each field before submitting: - Required\
-- Ranges\
+EstimatorClient validates each field before submitting: 
+- Required
+- Ranges
 - Type correctness
 
 ### ✔ Server + Client Component Separation
 
--   `page.tsx` (server): fetches `/model-info` using RSC\
+-   `page.tsx` (server): fetches `/model-info` using RSC
 -   `EstimatorClient.tsx` (client): handles UI, state, submission
 
 ### ✔ React Server Components for Initial Data Loading
@@ -211,7 +212,8 @@ const res = await fetch("http://localhost:8000/model-info", { cache: "no-store" 
 
 ### ✔ Custom Hook for Shared Functionality
 
-`useEstimatorHistory.ts` encapsulates: - LocalStorage persistence\
-- Add/clear history\
-- Comparison selection\
+`useEstimatorHistory.ts` encapsulates: 
+- LocalStorage persistence
+- Add/clear history
+- Comparison selection
 - ChartData computation
