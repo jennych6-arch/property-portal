@@ -5,6 +5,12 @@ from typing import Dict
 import os
 import requests
 
+from .schemas import (
+    PredictSingleRequest,
+    PredictResponse,
+    EstimatorSingleResponse,
+)
+
 app = FastAPI(title="Project 2 Estimator API", version="2.0.0")
 
 app.add_middleware(
@@ -14,11 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# IMPORTANT:
-# Project 1 container is running as:
-#     docker run -p 8000:80 housing-price-api
-# So the ML API is accessible at:
-#     http://localhost:8000
+# Base URL of the Task 1 ML API (Docker container)
+# Override this via environment variable in different environments
 ML_API_BASE_URL = os.getenv("ML_API_BASE_URL", "http://localhost:8000")
 
 
@@ -44,57 +47,52 @@ def model_info():
         raise HTTPException(status_code=502, detail=f"Error contacting ML API: {str(e)}")  # type: ignore
 
 
-@app.post("/predict", summary="Predict price (single or batch)")
-def predict(payload: Dict):
+@app.post("/predict", response_model=EstimatorSingleResponse)
+def predict_single(request: PredictSingleRequest):
     """
-    Project 2 UI sends:
-      { "features": { ... } }  → SINGLE prediction
-    Batch requests come as:
-      { "instances": [ {..}, {..} ] }
+    Estimator backend entrypoint used by the Task 2 Estimator UI.
 
-    Project 1 only supports:
-      { "instances": [ ... ] }
+    - Accepts a *single* property:
+        { "features": { "square_footage": ..., "bedrooms": ..., ... } }
 
-    So convert single → batch before forwarding.
+    - Forwards this to the Task 1 ML /predict endpoint, which returns:
+        { "predictions": [<float>, ...] }
+
+    - Validates the ML response and unwraps the first element:
+        { "prediction": <float> }
     """
 
-    # ---- SINGLE ----
-    if "features" in payload:
-        instance = payload["features"]
-        converted = {"instances": [instance]}
-
-    # ---- BATCH ----
-    elif "instances" in payload:
-        converted = payload
-
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="Payload must contain 'features' (single) or 'instances' (batch)."
-        )
-
-    # Forward to Project 1 container
+    # Forward the request body to Task 1 ML API
     try:
         r = requests.post(
             f"{ML_API_BASE_URL}/predict",
-            json=converted,
-            timeout=5
+            json=request.model_dump(),
+            timeout=5,
         )
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Cannot reach ML API: {str(e)}")
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"ML API unreachable: {e}",
+        )
 
     if r.status_code != 200:
-        raise HTTPException(status_code=r.status_code, detail=r.text)
+        # Treat non-200 from ML API as upstream failure
+        raise HTTPException(status_code=502, detail=r.text)
 
-    result = r.json()
+    # Validate and parse ML API response using PredictResponse schema
+    try:
+        ml_resp = PredictResponse.model_validate(r.json())
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Invalid response from ML API: {e}",
+        )
 
-    # If original request was SINGLE → unwrap predictions[0]
-    if "features" in payload:
-        preds = result.get("predictions", [])
-        if preds:
-            return {"prediction": preds[0]}
-        else:
-            raise HTTPException(status_code=500, detail="ML API returned no predictions.")
+    if not ml_resp.predictions:
+        raise HTTPException(
+            status_code=500,
+            detail="ML API returned no predictions.",
+        )
 
-    # Batch → return all predictions
-    return result
+    # Unwrap the first prediction for the UI
+    return EstimatorSingleResponse(prediction=ml_resp.predictions[0])
