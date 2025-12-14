@@ -197,7 +197,8 @@ GET  http://localhost:8080/market/export?type=pdf
 ### ✔ Backend Data Validation
 
 Estimator API now validates required fields, numeric bounds, and
-malformed input before calling ML container.
+malformed input before calling ML container.  
+
 Analysis API validates input data of what-if prediction request and 
 controller enforces validation.
 
@@ -206,7 +207,8 @@ controller enforces validation.
 EstimatorClient validates each field before submitting: 
 - Required
 - Ranges
-- Type correctness
+- Type correctness.  
+
 AnalysisCient validates input data type/range from what-if form.
 
 ### ✔ Server + Client Component Separation
