@@ -56,6 +56,7 @@ UI → estimator-api → Task 1 ML API (Docker)
 ### Features
 - Initial dataset load into memory  
 - Market summary (avg / min / max / median / count)  
+- Grouped market statistics bar chart
 - Cached with Spring `@Cacheable`  
 - Filter segments (price, bedrooms, school rating)  
 - What-if analysis → calls Task 1 ML API  
@@ -66,6 +67,7 @@ UI → estimator-api → Task 1 ML API (Docker)
 ### Endpoints
 ```
 GET  /market/summary
+GET  /market/avgPriceByBedrooms
 GET  /market/segments
 POST /market/what-if
 GET  /market/export?type=csv
@@ -88,9 +90,10 @@ GET  /market/export?type=pdf
 - Shows predicted price
 
 ### /analysis
-- Server component loads summary + segments  
-- Client component handles filters, what-if, export  
-- Uses loading.tsx + error.tsx
+- Server component loads summary + segments + grouped stats  
+- Client component handles filters, what-if, export 
+- Implements both client-side and backend input validation on what-if form
+- Handles API call failures
 
 ---
 
@@ -135,6 +138,12 @@ npm run dev
 
 # 🧪 Quick Test Endpoints
 
+## Estimator
+```
+Open:  
+👉 http://localhost:3000/analysis
+```
+
 ### Estimator
 ```
 POST http://localhost:9000/predict
@@ -176,9 +185,9 @@ GET  http://localhost:8080/market/export?type=pdf
 
 # 💡 Notes
 
-- All predictions in Project 2 flow through the Task 1 ML API  
+- All predictions flow through the Task 1 ML API  
 - Estimator API is a backend-for-frontend  
-- Analysis API demonstrates caching, data ingestion, what-if logic, PDF export  
+- Analysis API demonstrates caching, data ingestion, what-if logic, PDF/CSV export  
 - Next.js uses server components for initial data load  
 
 ---
@@ -189,6 +198,8 @@ GET  http://localhost:8080/market/export?type=pdf
 
 Estimator API now validates required fields, numeric bounds, and
 malformed input before calling ML container.
+Analysis API validates input data of what-if prediction request and 
+controller enforces validation.
 
 ### ✔ Client-Side Validation
 
@@ -196,6 +207,7 @@ EstimatorClient validates each field before submitting:
 - Required
 - Ranges
 - Type correctness
+AnalysisCient validates input data type/range from what-if form.
 
 ### ✔ Server + Client Component Separation
 

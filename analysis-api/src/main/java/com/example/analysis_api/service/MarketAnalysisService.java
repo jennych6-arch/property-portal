@@ -168,7 +168,7 @@ public class MarketAnalysisService {
                 .collect(Collectors.toList());
     }
 
-    /// What-if: call Python model ML container
+    /// What-if: call Python ML model container
     public WhatIfResponse runWhatIf(WhatIfRequest req) {
         Map<String, Object> features = new HashMap<>();
         features.put("square_footage", req.getSquareFootage());
