@@ -10,7 +10,9 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
+import com.example.analysis_api.model.GroupedStatistics;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.server.ResponseStatusException;
 import jakarta.annotation.PostConstruct;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -23,6 +25,9 @@ public class MarketAnalysisService {
 
     @Value("classpath:data/housing.csv")
     private Resource housingDataResource;
+
+    @Value("${estimator.api.url:http://localhost:8000/predict}")
+    private String estimatorUrl;
 
     // This will hold all properties in memory
     private List<PropertyRecord> properties = new ArrayList<>();
@@ -44,8 +49,6 @@ public class MarketAnalysisService {
                 if (parts.length < 9)
                     continue;
 
-                // String id = parts[0]; // we can ignore id for now, or store it later if
-                // needed
                 double squareFootage = Double.parseDouble(parts[1]);
                 int bedrooms = Integer.parseInt(parts[2]);
                 double bathrooms = Double.parseDouble(parts[3]);
@@ -71,7 +74,7 @@ public class MarketAnalysisService {
         }
     }
 
-    // i & ii: Aggregate statistics – cached
+    // Aggregate statistics – cached
     @Cacheable("marketSummary")
     public MarketSummary getMarketSummary() {
         if (properties.isEmpty()) {
@@ -99,6 +102,53 @@ public class MarketAnalysisService {
         return new MarketSummary(avg, min, max, median, prices.size());
     }
 
+    // Grouped statistics: average price by number of bedrooms (for a filtered
+    // subset)
+    @Cacheable("avgPriceByBedrooms")
+    public List<GroupedStatistics> getAveragePriceByBedrooms(
+            Double minPrice,
+            Double maxPrice,
+            Integer minBedrooms,
+            Integer maxBedrooms,
+            Double minSchoolRating,
+            Double maxSchoolRating) {
+        // 1) Get the filtered subset first, reusing your existing filter logic
+        List<PropertyRecord> filtered = filterProperties(
+                minPrice,
+                maxPrice,
+                minBedrooms,
+                maxBedrooms,
+                minSchoolRating,
+                maxSchoolRating);
+
+        if (filtered.isEmpty()) {
+            return List.of();
+        }
+
+        // 2) Group by bedrooms
+        Map<Integer, List<PropertyRecord>> byBedrooms = filtered.stream()
+                .collect(Collectors.groupingBy(PropertyRecord::getBedrooms));
+
+        // 3) For each group, compute count + average price, and map to GroupedStatistic
+        return byBedrooms.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey()) // sort by bedroom count
+                .map(entry -> {
+                    int bedrooms = entry.getKey();
+                    List<PropertyRecord> group = entry.getValue();
+
+                    double avgPrice = group.stream()
+                            .mapToDouble(PropertyRecord::getPrice)
+                            .average()
+                            .orElse(0.0);
+
+                    return new GroupedStatistics(
+                            String.valueOf(bedrooms), // label
+                            group.size(),
+                            avgPrice);
+                })
+                .collect(Collectors.toList());
+    }
+
     // Filtered list for segments
     @Cacheable("segments")
     public List<PropertyRecord> filterProperties(
@@ -118,9 +168,8 @@ public class MarketAnalysisService {
                 .collect(Collectors.toList());
     }
 
-    // iii: What-if: call Python model container
+    /// What-if: call Python model ML container
     public WhatIfResponse runWhatIf(WhatIfRequest req) {
-        // Build request body expected by FastAPI /predict:
         Map<String, Object> features = new HashMap<>();
         features.put("square_footage", req.getSquareFootage());
         features.put("bedrooms", req.getBedrooms());
@@ -137,25 +186,37 @@ public class MarketAnalysisService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        // Assumes FastAPI is at http://localhost:8000/predict
-        ResponseEntity<Map> response = restTemplate.exchange(
-                "http://localhost:8000/predict",
-                HttpMethod.POST,
-                entity,
-                Map.class);
+        final ResponseEntity<Map> response;
+        try {
+            response = restTemplate.exchange(
+                    estimatorUrl, // configurable
+                    HttpMethod.POST,
+                    entity,
+                    Map.class);
+        } catch (Exception e) {
+            // ML service unreachable / timeout / connection error
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Estimator service is unavailable",
+                    e);
+        }
 
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-            throw new RuntimeException("Failed to call estimator service");
+            // ML service responded but not OK
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Estimator service returned a non-success response");
         }
 
         Object preds = response.getBody().get("predictions");
-        double predictedPrice = 0;
-        if (preds instanceof List<?> list && !list.isEmpty()) {
-            Object first = list.get(0);
-            if (first instanceof Number num) {
-                predictedPrice = num.doubleValue();
-            }
+        if (!(preds instanceof List<?> list) || list.isEmpty() || !(list.get(0) instanceof Number num)) {
+            // payload shape not as expected
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Estimator service returned an invalid predictions payload");
         }
+
+        double predictedPrice = num.doubleValue();
 
         double marketAvg = getMarketSummary().getAvgPrice();
         return new WhatIfResponse(predictedPrice, marketAvg);

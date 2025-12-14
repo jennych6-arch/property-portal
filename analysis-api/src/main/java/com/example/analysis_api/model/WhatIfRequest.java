@@ -1,13 +1,31 @@
 package com.example.analysis_api.model;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+
 public class WhatIfRequest {
+    @Min(value = 100, message = "squareFootage must be >= 100")
     private double squareFootage;
+
+    @Min(value = 0, message = "bedrooms must be >= 0")
     private int bedrooms;
+
+    @Min(value = 0, message = "bathrooms must be >= 0")
     private double bathrooms;
+
+    @Min(value = 1800, message = "yearBuilt must be >= 1800")
     private int yearBuilt;
+
+    @Min(value = 0, message = "lotSize must be >= 0")
     private double lotSize;
+
+    @Min(value = 0, message = "distanceToCityCenter must be >= 0")
     private double distanceToCityCenter;
-    private int schoolRating;
+
+    @Min(value = 0, message = "schoolRating must be between 0 and 10")
+    @Max(value = 10, message = "schoolRating must be between 0 and 10")
+    private double schoolRating;
+
 
     public double getSquareFootage() { return squareFootage; }
     public void setSquareFootage(double squareFootage) { this.squareFootage = squareFootage; }
@@ -27,6 +45,6 @@ public class WhatIfRequest {
     public double getDistanceToCityCenter() { return distanceToCityCenter; }
     public void setDistanceToCityCenter(double distanceToCityCenter) { this.distanceToCityCenter = distanceToCityCenter; }
 
-    public int getSchoolRating() { return schoolRating; }
-    public void setSchoolRating(int schoolRating) { this.schoolRating = schoolRating; }
+    public double getSchoolRating() { return schoolRating; }
+    public void setSchoolRating(double schoolRating) { this.schoolRating = schoolRating; }
 }

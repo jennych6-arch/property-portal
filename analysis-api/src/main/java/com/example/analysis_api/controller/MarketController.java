@@ -10,6 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.example.analysis_api.model.GroupedStatistics;
+import jakarta.validation.Valid;
+
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -54,8 +57,28 @@ public class MarketController {
         );
     }
 
+    // Grouped statistics: avg price by bedrooms
+    @GetMapping("/distribution/bedrooms")
+    public List<GroupedStatistics> getDistributionByBedrooms(
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Integer minBedrooms,
+            @RequestParam(required = false) Integer maxBedrooms,
+            @RequestParam(required = false, name = "minSchoolRating") Double minSchoolRating,
+            @RequestParam(required = false, name = "maxSchoolRating") Double maxSchoolRating
+    ) {
+        return analysisService.getAveragePriceByBedrooms(
+                minPrice,
+                maxPrice,
+                minBedrooms,
+                maxBedrooms,
+                minSchoolRating,
+                maxSchoolRating
+        );
+    }
+
     @PostMapping("/what-if")
-    public WhatIfResponse runWhatIf(@RequestBody WhatIfRequest request) {
+    public WhatIfResponse runWhatIf(@Valid @RequestBody WhatIfRequest request) {
         return analysisService.runWhatIf(request);
     }
 

@@ -1,56 +1,39 @@
-// app/analysis/page.tsx
 import AnalysisClient from "./AnalysisClient";
+import { GroupedStatistic, MarketFilter, MarketSummary, PropertyRecord } from "./_lib/types";
+import { filterFromSearchParams, toQuery } from "./_lib/query";
 
-type MarketSummary = {
-  avgPrice: number;
-  minPrice: number;
-  maxPrice: number;
-  medianPrice: number;
-  totalCount: number;
-};
+const API_BASE = process.env.ANALYSIS_API_BASE_URL ?? "http://localhost:8080";
 
-type PropertyRecord = {
-  price: number;
-  squareFootage: number;
-  bedrooms: number;
-  bathrooms: number;
-  yearBuilt: number;
-  lotSize: number;
-  distanceToCityCenter: number;
-  schoolRating: number;
-};
-
-async function fetchSummary(): Promise<MarketSummary> {
-  const res = await fetch("http://localhost:8080/market/summary", {
-    cache: "no-store",
-  });
-
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
   if (!res.ok) {
-    throw new Error("Failed to load market summary");
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Failed to load ${path}${detail ? `: ${detail}` : ""}`);
   }
-
   return res.json();
 }
 
-async function fetchSegments(): Promise<PropertyRecord[]> {
-  const res = await fetch("http://localhost:8080/market/segments", {
-    cache: "no-store",
-  });
+export default async function AnalysisPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // unwrap the Promise
+  const searchParams = await props.searchParams;
 
-  if (!res.ok) {
-    throw new Error("Failed to load market segments");
-  }
+  const filter: MarketFilter = filterFromSearchParams(searchParams);
+  const q = toQuery(filter);
 
-  return res.json();
-}
-
-export default async function AnalysisPage() {
-  const [summary, segments] = await Promise.all([
-    fetchSummary(),
-    fetchSegments(),
+  const [summary, segments, grouped] = await Promise.all([
+    getJson<MarketSummary>(`/market/summary${q}`),
+    getJson<PropertyRecord[]>(`/market/segments${q}`),
+    getJson<GroupedStatistic[]>(`/market/distribution/bedrooms${q}`),
   ]);
 
   return (
-    <AnalysisClient initialSummary={summary} initialSegments={segments} />
+    <AnalysisClient
+      initialFilter={filter}
+      initialSummary={summary}
+      initialSegments={segments}
+      initialGroups={grouped}
+    />
   );
 }
