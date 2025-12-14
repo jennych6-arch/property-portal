@@ -26,25 +26,77 @@ public class WhatIfRequest {
     @Max(value = 10, message = "schoolRating must be between 0 and 10")
     private double schoolRating;
 
+    public WhatIfRequest() {}
 
-    public double getSquareFootage() { return squareFootage; }
-    public void setSquareFootage(double squareFootage) { this.squareFootage = squareFootage; }
+    public WhatIfRequest(double squareFootage,
+                        int bedrooms,
+                        double bathrooms,
+                        int yearBuilt,
+                        double lotSize,
+                        double distanceToCityCenter,
+                        double schoolRating) {
+        this.squareFootage = squareFootage;
+        this.bedrooms = bedrooms;
+        this.bathrooms = bathrooms;
+        this.yearBuilt = yearBuilt;
+        this.lotSize = lotSize;
+        this.distanceToCityCenter = distanceToCityCenter;
+        this.schoolRating = schoolRating;
+    }
 
-    public int getBedrooms() { return bedrooms; }
-    public void setBedrooms(int bedrooms) { this.bedrooms = bedrooms; }
+    public double getSquareFootage() {
+        return squareFootage;
+    }
 
-    public double getBathrooms() { return bathrooms; }
-    public void setBathrooms(double bathrooms) { this.bathrooms = bathrooms; }
+    public void setSquareFootage(double squareFootage) {
+        this.squareFootage = squareFootage;
+    }
 
-    public int getYearBuilt() { return yearBuilt; }
-    public void setYearBuilt(int yearBuilt) { this.yearBuilt = yearBuilt; }
+    public int getBedrooms() {
+        return bedrooms;
+    }
 
-    public double getLotSize() { return lotSize; }
-    public void setLotSize(double lotSize) { this.lotSize = lotSize; }
+    public void setBedrooms(int bedrooms) {
+        this.bedrooms = bedrooms;
+    }
 
-    public double getDistanceToCityCenter() { return distanceToCityCenter; }
-    public void setDistanceToCityCenter(double distanceToCityCenter) { this.distanceToCityCenter = distanceToCityCenter; }
+    public double getBathrooms() {
+        return bathrooms;
+    }
 
-    public double getSchoolRating() { return schoolRating; }
-    public void setSchoolRating(double schoolRating) { this.schoolRating = schoolRating; }
+    public void setBathrooms(double bathrooms) {
+        this.bathrooms = bathrooms;
+    }
+
+    public int getYearBuilt() {
+        return yearBuilt;
+    }
+
+    public void setYearBuilt(int yearBuilt) {
+        this.yearBuilt = yearBuilt;
+    }
+
+    public double getLotSize() {
+        return lotSize;
+    }
+
+    public void setLotSize(double lotSize) {
+        this.lotSize = lotSize;
+    }
+
+    public double getDistanceToCityCenter() {
+        return distanceToCityCenter;
+    }
+
+    public void setDistanceToCityCenter(double distanceToCityCenter) {
+        this.distanceToCityCenter = distanceToCityCenter;
+    }
+
+    public double getSchoolRating() {
+        return schoolRating;
+    }
+
+    public void setSchoolRating(double schoolRating) {
+        this.schoolRating = schoolRating;
+    }
 }

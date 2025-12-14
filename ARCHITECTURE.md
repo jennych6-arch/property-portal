@@ -133,7 +133,7 @@ On merge to `main`:
 This architecture demonstrates:
 - Clean service separation
 - Stateless, horizontally scalable backends
-- Integration of ML with Java + JavaScript services
+- Integration of ML with Java + Python services
 - Cloud-native deployment principles
 - Extendability for future enhancements
 
